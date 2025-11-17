@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 80" fill="none">
+  <g>
+    <!-- HIFI BAR text -->
+    <rect x="10" y="40" width="180" height="35" stroke="#10B981" stroke-width="3" fill="white" rx="2"/>
+    <text x="100" y="65" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="#10B981" text-anchor="middle">HIFI BAR</text>
+
+    <!-- Coffee cup icon above -->
+    <ellipse cx="100" cy="20" rx="15" ry="3" fill="#10B981"/>
+    <path d="M 85 20 Q 85 35 100 35 Q 115 35 115 20" stroke="#10B981" stroke-width="2.5" fill="none"/>
+    <line x1="88" y1="20" x2="112" y2="20" stroke="#10B981" stroke-width="2"/>
+
+    <!-- Lightning bolts for energy -->
+    <path d="M 70 8 L 75 15 L 72 15 L 77 22" stroke="#10B981" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M 123 8 L 128 15 L 125 15 L 130 22" stroke="#10B981" stroke-width="2" fill="none" stroke-linecap="round"/>
+  </g>
+</svg>

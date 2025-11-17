@@ -1,0 +1,59 @@
+═══════════════════════════════════════════════════════════
+   DÉPLOIEMENT RAPIDE SUR HOSTINGER CLOUD
+   Site: www.hifibar.eu
+═══════════════════════════════════════════════════════════
+
+✅ OUI, VOUS POUVEZ UTILISER HOSTINGER CLOUD !
+   Votre plan supporte parfaitement ce site Next.js.
+
+═══════════════════════════════════════════════════════════
+ÉTAPES RAPIDES :
+═══════════════════════════════════════════════════════════
+
+1. hPanel → Node.js → Create Application
+   - Node.js Version: 18.x
+   - Startup File: server.js
+   - Port: 3000
+
+2. Uploadez tous les fichiers via File Manager
+   (ou clonez via Git/SSH)
+
+3. Ajoutez les variables d'environnement (voir ci-dessous)
+
+4. Via SSH, exécutez :
+   npm install
+   npm run build
+
+5. Dans hPanel → Start Application
+
+6. Visitez www.hifibar.eu ✅
+
+═══════════════════════════════════════════════════════════
+VARIABLES D'ENVIRONNEMENT REQUISES :
+═══════════════════════════════════════════════════════════
+
+NEXT_PUBLIC_SUPABASE_URL=https://anjfqclowjfbhqseetyr.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFuamZxY2xvd2pmYmhxc2VldHlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMwNDM2ODksImV4cCI6MjA3ODYxOTY4OX0.0ynu8IH9AppuT8wBdGC9fumUo4vpeM_zQQeaz_LPrAo
+NODE_ENV=production
+PORT=3000
+
+═══════════════════════════════════════════════════════════
+FICHIERS IMPORTANTS :
+═══════════════════════════════════════════════════════════
+
+📖 README-DEPLOYMENT.md        → Guide de déploiement rapide
+📖 HOSTINGER_CLOUD_GUIDE.md    → Guide complet avec dépannage
+🚀 deploy-hostinger.sh          → Script automatique de build
+⚙️  server.js                   → Serveur Node.js
+🔐 .env.example                 → Variables d'environnement
+
+═══════════════════════════════════════════════════════════
+ACCÈS ADMIN :
+═══════════════════════════════════════════════════════════
+
+URL: www.hifibar.eu/admin/login
+Identifiants: Voir ADMIN_CREDENTIALS.txt
+
+═══════════════════════════════════════════════════════════
+TOUT EST PRÊT ! 🎉
+═══════════════════════════════════════════════════════════
