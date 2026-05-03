@@ -750,7 +750,8 @@ async function captureAndOCR() {
   const canvas = document.getElementById('captureCanvas');
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
-  canvas.getContext('2d').drawImage(video, 0, 0);
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0);
 
   const ocrDiv = document.getElementById('ocrProgress');
   const ocrTxt = document.getElementById('ocrText');
@@ -758,25 +759,41 @@ async function captureAndOCR() {
   ocrTxt.textContent = 'Chargement Tesseract...';
   setStatus('OCR en cours...');
 
+  let worker = null;
   try {
-    const worker = await Tesseract.createWorker('eng', 1, {
+    worker = await Tesseract.createWorker({
       logger: m => {
+        if (m.status === 'loading tesseract core') ocrTxt.textContent = 'Chargement moteur...';
+        if (m.status === 'loading language traineddata') ocrTxt.textContent = 'Chargement langue...';
         if (m.status === 'recognizing text') {
           ocrTxt.textContent = `Analyse : ${Math.round(m.progress * 100)}%`;
         }
       }
     });
 
+    await worker.loadLanguage('eng');
+    await worker.initialize('eng');
+    await worker.setParameters({
+      tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-/ ',
+    });
+
     const { data: { text } } = await worker.recognize(canvas);
     await worker.terminate();
 
     ocrDiv.classList.remove('visible');
-    parseOCRText(text);
+    if (text && text.trim().length > 2) {
+      parseOCRText(text);
+    } else {
+      setStatus('Texte illisible — rapproche-toi', 'var(--warn)');
+      showToast('Texte non détecté', 'var(--warn)');
+    }
     stopCamera();
   } catch(e) {
+    if (worker) try { await worker.terminate(); } catch(_) {}
     ocrDiv.classList.remove('visible');
     setStatus('Erreur OCR — saisis manuellement', 'var(--danger)');
-    showToast('OCR échoué', 'var(--danger)');
+    showToast('OCR: ' + (e.message || String(e)), 'var(--danger)');
+    console.error('OCR error:', e);
   }
 }
 
