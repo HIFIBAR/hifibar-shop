@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="HIFI BAR TV" />
+  <link rel="manifest" href="/tv/manifest.json" />
+  <title>HIFI BAR · TV Scanner</title>
+
+  <!-- Tesseract.js OCR -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
+  <!-- QRCode generator -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: #111111;
+      --surface2: #1a1a1a;
+      --border: #2a2a2a;
+      --accent: #e8ff47;
+      --accent2: #ff6b35;
+      --text: #f0f0f0;
+      --text-dim: #666;
+      --text-mid: #999;
+      --success: #47ff8a;
+      --danger: #ff4747;
+      --warn: #ffb347;
+      --radius: 12px;
+      --font-head: 'Syne', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      min-height: 100dvh;
+      overflow-x: hidden;
+    }
+
+    /* ── HEADER ── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(10,10,10,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      font-family: var(--font-head);
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: -0.5px;
+      color: var(--accent);
+    }
+    .logo span { color: var(--text-dim); font-weight: 400; }
+
+    .tv-count {
+      font-size: 11px;
+      color: var(--text-dim);
+      background: var(--surface2);
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+    }
+    .tv-count strong { color: var(--accent); }
+
+    /* ── NAV TABS ── */
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      position: sticky;
+      top: 57px;
+      z-index: 99;
+    }
+    .tab {
+      flex: 1;
+      padding: 12px 8px;
+      text-align: center;
+      font-family: var(--font-head);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      color: var(--text-dim);
+      cursor: pointer;
+      border: none;
+      background: none;
+      transition: color 0.2s;
+      text-transform: uppercase;
+      position: relative;
+    }
+    .tab.active {
+      color: var(--accent);
+    }
+    .tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--accent);
+    }
+
+    /* ── PAGES ── */
+    .page { display: none; padding: 20px; padding-bottom: 40px; }
+    .page.active { display: block; }
+
+    /* ── FORM PAGE ── */
+    .section-title {
+      font-family: var(--font-head);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+      margin-top: 24px;
+    }
+    .section-title:first-child { margin-top: 0; }
+
+    /* Scanner zone */
+    .scanner-zone {
+      background: var(--surface);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 8px;
+      position: relative;
+    }
+
+    #videoEl {
+      width: 100%;
+      display: block;
+      max-height: 220px;
+      object-fit: cover;
+    }
+
+    .scanner-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10,10,10,0.6);
+      gap: 10px;
+    }
+    .scanner-overlay.hidden { display: none; }
+
+    .scan-icon {
+      font-size: 40px;
+      opacity: 0.5;
+    }
+
+    .scanner-status {
+      font-size: 11px;
+      color: var(--accent);
+      text-align: center;
+      padding: 8px 12px;
+      background: rgba(232,255,71,0.1);
+      border-top: 1px solid var(--border);
+      display: none;
+    }
+    .scanner-status.visible { display: block; }
+
+    /* OCR progress */
+    .ocr-progress {
+      display: none;
+      padding: 10px 14px;
+      background: var(--surface2);
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--text-mid);
+    }
+    .ocr-progress.visible { display: flex; align-items: center; gap: 8px; }
+    .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Buttons row */
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 11px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-family: var(--font-head);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn-accent {
+      background: var(--accent);
+      color: #0a0a0a;
+      border-color: var(--accent);
+    }
+    .btn-accent:active { opacity: 0.8; transform: scale(0.98); }
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-mid);
+    }
+    .btn-ghost:active { background: var(--surface2); }
+    .btn-danger {
+      background: transparent;
+      color: var(--danger);
+      border-color: var(--danger);
+    }
+    .btn-success {
+      background: var(--success);
+      color: #0a0a0a;
+      border-color: var(--success);
+      width: 100%;
+    }
+    .btn:disabled { opacity: 0.4; pointer-events: none; }
+
+    /* Input fields */
+    .field {
+      margin-bottom: 12px;
+    }
+    label {
+      display: block;
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+    }
+    input[type="text"], textarea {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input[type="text"]:focus, textarea:focus {
+      border-color: var(--accent);
+    }
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    /* État chips */
+    .chip-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .chip {
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-family: var(--font-head);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+      color: var(--text-dim);
+      background: var(--surface);
+    }
+    .chip:active { transform: scale(0.97); }
+    .chip.selected-complete { background: rgba(71,255,138,0.15); border-color: var(--success); color: var(--success); }
+    .chip.selected-partial { background: rgba(255,179,71,0.15); border-color: var(--warn); color: var(--warn); }
+    .chip.selected-suspect { background: rgba(255,107,53,0.15); border-color: var(--accent2); color: var(--accent2); }
+    .chip.selected-hs { background: rgba(255,71,71,0.15); border-color: var(--danger); color: var(--danger); }
+
+    /* Pièces suspectes */
+    .pieces-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .piece-chip {
+      padding: 7px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      font-size: 11px;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      transition: all 0.15s;
+      color: var(--text-dim);
+      background: var(--surface);
+    }
+    .piece-chip.selected {
+      background: rgba(255,107,53,0.2);
+      border-color: var(--accent2);
+      color: var(--accent2);
+    }
+
+    /* ── LIST PAGE ── */
+    .search-bar {
+      position: relative;
+      margin-bottom: 16px;
+    }
+    .search-bar input {
+      padding-left: 36px;
+    }
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-dim);
+      font-size: 14px;
+    }
+
+    .tv-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .tv-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      position: relative;
+    }
+    .tv-card:active { border-color: var(--accent); }
+
+    .tv-card-header {
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .tv-brand {
+      font-family: var(--font-head);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+    .tv-model {
+      font-family: var(--font-head);
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .tv-id {
+      font-size: 10px;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+      margin-top: 4px;
+    }
+
+    .etat-badge {
+      font-size: 10px;
+      font-family: var(--font-head);
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 20px;
+      flex-shrink: 0;
+    }
+    .etat-Complète { background: rgba(71,255,138,0.15); color: var(--success); }
+    .etat-Partielle { background: rgba(255,179,71,0.15); color: var(--warn); }
+    .etat-Suspecte { background: rgba(255,107,53,0.15); color: var(--accent2); }
+    .etat-HS { background: rgba(255,71,71,0.15); color: var(--danger); }
+
+    .tv-card-footer {
+      padding: 8px 16px 12px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      border-top: 1px solid var(--border);
+    }
+    .tv-date {
+      font-size: 10px;
+      color: var(--text-dim);
+      flex: 1;
+    }
+    .piece-tags {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+    .piece-tag {
+      font-size: 9px;
+      padding: 2px 7px;
+      border-radius: 10px;
+      background: rgba(255,107,53,0.15);
+      color: var(--accent2);
+      font-family: var(--font-mono);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-dim);
+    }
+    .empty-state .big { font-size: 40px; margin-bottom: 12px; }
+    .empty-state p { font-size: 13px; line-height: 1.6; }
+
+    /* ── MODAL ── */
+    .modal-bg {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 200;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .modal-bg.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px 20px 0 0;
+      width: 100%;
+      max-height: 90dvh;
+      overflow-y: auto;
+      padding: 24px 20px 40px;
+      animation: slideUp 0.25s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    .modal-handle {
+      width: 40px;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      margin: 0 auto 20px;
+    }
+
+    .modal-title {
+      font-family: var(--font-head);
+      font-size: 20px;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+    .modal-subtitle {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-bottom: 20px;
+    }
+
+    .qr-container {
+      display: flex;
+      justify-content: center;
+      margin: 16px 0;
+      background: white;
+      padding: 16px;
+      border-radius: 12px;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-label { color: var(--text-dim); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+    .info-value { color: var(--text); font-weight: 500; text-align: right; max-width: 60%; }
+
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--accent);
+      color: #0a0a0a;
+      font-family: var(--font-head);
+      font-weight: 700;
+      font-size: 13px;
+      padding: 12px 24px;
+      border-radius: 40px;
+      z-index: 999;
+      opacity: 0;
+      transition: all 0.3s;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* canvas hidden for OCR capture */
+    #captureCanvas { display: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">HIFI BAR <span>· TV</span></div>
+  <div class="tv-count">Stock : <strong id="headerCount">0</strong> TV</div>
+</header>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('add')">＋ Ajouter</button>
+  <button class="tab" onclick="switchTab('list')">📋 Liste</button>
+</div>
+
+<!-- ══ PAGE : AJOUTER ══ -->
+<div class="page active" id="page-add">
+
+  <p class="section-title">Scanner / OCR</p>
+
+  <div class="scanner-zone">
+    <video id="videoEl" autoplay playsinline muted></video>
+    <canvas id="captureCanvas"></canvas>
+    <div class="scanner-overlay" id="scannerOverlay">
+      <div class="scan-icon">📷</div>
+      <small style="color:var(--text-dim);font-size:11px;text-align:center;">Appuie sur "Caméra OCR"<br>pour scanner le texte</small>
+    </div>
+    <div class="scanner-status" id="scannerStatus"></div>
+    <div class="ocr-progress" id="ocrProgress">
+      <div class="spinner"></div>
+      <span id="ocrText">Analyse en cours...</span>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-accent" id="btnCamera" onclick="toggleCamera()">📷 Caméra OCR</button>
+    <button class="btn btn-ghost" id="btnCapture" onclick="captureAndOCR()" disabled>🔍 Analyser</button>
+    <button class="btn btn-ghost" id="btnStop" onclick="stopCamera()" disabled>✕</button>
+  </div>
+
+  <p class="section-title">Informations TV</p>
+
+  <div class="field">
+    <label>Marque</label>
+    <input type="text" id="fBrand" placeholder="Samsung, Sony, LG..." autocomplete="off" />
+  </div>
+  <div class="field">
+    <label>Modèle</label>
+    <input type="text" id="fModel" placeholder="KD-65XH9505..." autocomplete="off" />
+  </div>
+
+  <p class="section-title">État général</p>
+  <div class="chip-grid">
+    <div class="chip" data-etat="Complète" onclick="selectEtat(this)">✅ Complète</div>
+    <div class="chip" data-etat="Partielle" onclick="selectEtat(this)">⚠️ Partielle</div>
+    <div class="chip" data-etat="Suspecte" onclick="selectEtat(this)">🔶 Suspecte</div>
+    <div class="chip" data-etat="HS" onclick="selectEtat(this)">❌ Hors service</div>
+  </div>
+
+  <p class="section-title">Pièces suspectes</p>
+  <div class="pieces-grid" id="piecesGrid">
+    <div class="piece-chip" onclick="togglePiece(this)">MainBoard</div>
+    <div class="piece-chip" onclick="togglePiece(this)">PowerBoard</div>
+    <div class="piece-chip" onclick="togglePiece(this)">T-Con</div>
+    <div class="piece-chip" onclick="togglePiece(this)">Dalle</div>
+    <div class="piece-chip" onclick="togglePiece(this)">Rétroéclairage</div>
+    <div class="piece-chip" onclick="togglePiece(this)">Tuner</div>
+    <div class="piece-chip" onclick="togglePiece(this)">IR / Boutons</div>
+    <div class="piece-chip" onclick="togglePiece(this)">Haut-parleurs</div>
+    <div class="piece-chip" onclick="togglePiece(this)">Connectique</div>
+    <div class="piece-chip" onclick="togglePiece(this)">Câbles</div>
+  </div>
+
+  <p class="section-title">Notes de démontage</p>
+  <div class="field">
+    <textarea id="fNotes" placeholder="Observations, références utiles, état de la dalle..."></textarea>
+  </div>
+
+  <button class="btn btn-success" onclick="saveTV()">💾 Enregistrer + Générer QR</button>
+</div>
+
+<!-- ══ PAGE : LISTE ══ -->
+<div class="page" id="page-list">
+  <div class="search-bar">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="searchInput" placeholder="Rechercher marque ou modèle..." oninput="renderList()" />
+  </div>
+  <div class="tv-list" id="tvList">
+    <div class="empty-state">
+      <div class="big">📺</div>
+      <p>Aucune TV enregistrée.<br>Ajoute ta première TV !</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL DÉTAIL ══ -->
+<div class="modal-bg" id="modalBg" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modalTitle"></div>
+    <div class="modal-subtitle" id="modalSubtitle"></div>
+    <div class="qr-container"><div id="qrCode"></div></div>
+    <div id="modalInfos"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" style="flex:1" onclick="printQR()">🖨️ Imprimer QR</button>
+      <button class="btn btn-danger" style="flex:1" onclick="deleteTV()">🗑️ Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══ DATA ══
+const DB_KEY = 'hifibar_tvs';
+let tvList = JSON.parse(localStorage.getItem(DB_KEY) || '[]');
+let selectedEtat = '';
+let selectedPieces = [];
+let cameraStream = null;
+let currentModalId = null;
+
+// ══ UTILS ══
+function genId() {
+  const n = tvList.length + 1;
+  return 'TV-' + String(n).padStart(4, '0');
+}
+
+function save() {
+  localStorage.setItem(DB_KEY, JSON.stringify(tvList));
+  updateCount();
+}
+
+function updateCount() {
+  document.getElementById('headerCount').textContent = tvList.length;
+}
+
+function showToast(msg, color = 'var(--accent)') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = color;
+  t.style.color = color === 'var(--accent)' ? '#0a0a0a' : '#fff';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('page-' + tab).classList.add('active');
+  if (tab === 'list') renderList();
+}
+
+// ══ ÉTAT ══
+function selectEtat(el) {
+  document.querySelectorAll('.chip').forEach(c => c.className = 'chip');
+  selectedEtat = el.dataset.etat;
+  el.classList.add('selected-' + selectedEtat.toLowerCase().replace('è','e'));
+}
+
+function togglePiece(el) {
+  el.classList.toggle('selected');
+  const name = el.textContent.trim();
+  if (el.classList.contains('selected')) {
+    if (!selectedPieces.includes(name)) selectedPieces.push(name);
+  } else {
+    selectedPieces = selectedPieces.filter(p => p !== name);
+  }
+}
+
+// ══ CAMERA + OCR ══
+async function toggleCamera() {
+  if (cameraStream) { stopCamera(); return; }
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 } }
+    });
+    const video = document.getElementById('videoEl');
+    video.srcObject = cameraStream;
+    document.getElementById('scannerOverlay').classList.add('hidden');
+    document.getElementById('btnCamera').textContent = '⏹ Stop';
+    document.getElementById('btnCapture').disabled = false;
+    document.getElementById('btnStop').disabled = false;
+    setStatus('Caméra active — pointe vers la TV puis "Analyser"', 'var(--success)');
+  } catch(e) {
+    showToast('Caméra non disponible', 'var(--danger)');
+  }
+}
+
+function stopCamera() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(t => t.stop());
+    cameraStream = null;
+  }
+  const video = document.getElementById('videoEl');
+  video.srcObject = null;
+  document.getElementById('scannerOverlay').classList.remove('hidden');
+  document.getElementById('btnCamera').textContent = '📷 Caméra OCR';
+  document.getElementById('btnCapture').disabled = true;
+  document.getElementById('btnStop').disabled = true;
+  setStatus('');
+}
+
+function setStatus(msg, color = 'var(--accent)') {
+  const s = document.getElementById('scannerStatus');
+  s.textContent = msg;
+  s.style.color = color;
+  s.classList.toggle('visible', !!msg);
+}
+
+async function captureAndOCR() {
+  const video = document.getElementById('videoEl');
+  const canvas = document.getElementById('captureCanvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+
+  const ocrDiv = document.getElementById('ocrProgress');
+  const ocrTxt = document.getElementById('ocrText');
+  ocrDiv.classList.add('visible');
+  ocrTxt.textContent = 'Chargement Tesseract...';
+  setStatus('OCR en cours...');
+
+  try {
+    const worker = await Tesseract.createWorker('eng', 1, {
+      logger: m => {
+        if (m.status === 'recognizing text') {
+          ocrTxt.textContent = `Analyse : ${Math.round(m.progress * 100)}%`;
+        }
+      }
+    });
+
+    const { data: { text } } = await worker.recognize(canvas);
+    await worker.terminate();
+
+    ocrDiv.classList.remove('visible');
+    parseOCRText(text);
+    stopCamera();
+  } catch(e) {
+    ocrDiv.classList.remove('visible');
+    setStatus('Erreur OCR — saisis manuellement', 'var(--danger)');
+    showToast('OCR échoué', 'var(--danger)');
+  }
+}
+
+function parseOCRText(raw) {
+  const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+  const fullText = lines.join(' ');
+
+  // Detect brand
+  const brands = ['Samsung','Sony','LG','Philips','Panasonic','Hisense','TCL','Sharp','Toshiba','Grundig','Thomson','Vestel','Haier','Xiaomi','JVC','Hitachi'];
+  let detectedBrand = '';
+  for (const b of brands) {
+    if (fullText.toLowerCase().includes(b.toLowerCase())) {
+      detectedBrand = b; break;
+    }
+  }
+
+  // Detect model — pattern : 2+ uppercase letters + digits + letters/digits
+  const modelRegex = /\b([A-Z]{1,3}[-]?[A-Z0-9]{2,}[-]?[A-Z0-9]{2,})\b/g;
+  const models = [...fullText.matchAll(modelRegex)].map(m => m[1]);
+  const detectedModel = models.find(m => m.length >= 6 && m.length <= 20) || '';
+
+  if (detectedBrand) document.getElementById('fBrand').value = detectedBrand;
+  if (detectedModel) document.getElementById('fModel').value = detectedModel;
+
+  if (detectedBrand || detectedModel) {
+    setStatus(`✓ Détecté : ${detectedBrand} ${detectedModel}`, 'var(--success)');
+    showToast('OCR réussi !');
+  } else {
+    setStatus('Rien détecté — saisis manuellement', 'var(--warn)');
+    showToast('Texte non reconnu', 'var(--warn)');
+    // Show raw text in notes for reference
+    if (raw.trim()) {
+      document.getElementById('fNotes').value = '[OCR brut]\n' + raw.substring(0, 300);
+    }
+  }
+}
+
+// ══ SAVE ══
+function saveTV() {
+  const brand = document.getElementById('fBrand').value.trim();
+  const model = document.getElementById('fModel').value.trim();
+
+  if (!brand && !model) {
+    showToast('Marque ou modèle requis', 'var(--danger)'); return;
+  }
+
+  const tv = {
+    id: genId(),
+    brand,
+    model,
+    etat: selectedEtat || 'Non défini',
+    pieces: [...selectedPieces],
+    notes: document.getElementById('fNotes').value.trim(),
+    date: new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })
+  };
+
+  tvList.unshift(tv);
+  save();
+  resetForm();
+  showToast('TV enregistrée : ' + tv.id);
+  openModal(tv.id);
+}
+
+function resetForm() {
+  ['fBrand','fModel','fNotes'].forEach(id => document.getElementById(id).value = '');
+  document.querySelectorAll('.chip').forEach(c => c.className = 'chip');
+  document.querySelectorAll('.piece-chip').forEach(c => c.classList.remove('selected'));
+  selectedEtat = '';
+  selectedPieces = [];
+  setStatus('');
+}
+
+// ══ LIST ══
+function renderList() {
+  const q = (document.getElementById('searchInput')?.value || '').toLowerCase();
+  const container = document.getElementById('tvList');
+  const filtered = tvList.filter(tv =>
+    tv.brand.toLowerCase().includes(q) ||
+    tv.model.toLowerCase().includes(q) ||
+    tv.id.toLowerCase().includes(q)
+  );
+
+  if (!filtered.length) {
+    container.innerHTML = `<div class="empty-state"><div class="big">📺</div><p>${tvList.length ? 'Aucun résultat' : 'Aucune TV enregistrée.<br>Ajoute ta première TV !'}</p></div>`;
+    return;
+  }
+
+  container.innerHTML = filtered.map(tv => `
+    <div class="tv-card" onclick="openModal('${tv.id}')">
+      <div class="tv-card-header">
+        <div>
+          <div class="tv-brand">${tv.brand || '—'}</div>
+          <div class="tv-model">${tv.model || 'Modèle inconnu'}</div>
+          <div class="tv-id">${tv.id}</div>
+        </div>
+        <div class="etat-badge etat-${tv.etat}">${tv.etat}</div>
+      </div>
+      ${tv.pieces.length || tv.date ? `
+      <div class="tv-card-footer">
+        <div class="tv-date">${tv.date}</div>
+        <div class="piece-tags">
+          ${tv.pieces.slice(0,3).map(p => `<span class="piece-tag">${p}</span>`).join('')}
+          ${tv.pieces.length > 3 ? `<span class="piece-tag">+${tv.pieces.length - 3}</span>` : ''}
+        </div>
+      </div>` : ''}
+    </div>
+  `).join('');
+}
+
+// ══ MODAL ══
+function openModal(id) {
+  const tv = tvList.find(t => t.id === id);
+  if (!tv) return;
+  currentModalId = id;
+
+  document.getElementById('modalTitle').textContent = tv.brand + ' ' + tv.model;
+  document.getElementById('modalSubtitle').textContent = tv.id + ' · ' + tv.date;
+
+  // QR Code
+  const qrDiv = document.getElementById('qrCode');
+  qrDiv.innerHTML = '';
+  const qrData = JSON.stringify({ id: tv.id, brand: tv.brand, model: tv.model });
+  new QRCode(qrDiv, { text: qrData, width: 160, height: 160, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.H });
+
+  // Infos
+  const rows = [
+    ['État', tv.etat],
+    ['Pièces suspectes', tv.pieces.length ? tv.pieces.join(', ') : '—'],
+    ['Notes', tv.notes || '—'],
+  ];
+  document.getElementById('modalInfos').innerHTML = rows.map(([l,v]) => `
+    <div class="info-row">
+      <span class="info-label">${l}</span>
+      <span class="info-value">${v}</span>
+    </div>
+  `).join('');
+
+  document.getElementById('modalBg').classList.add('open');
+  switchTab('list');
+
+  // Switch to list tab visually
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab')[1].classList.add('active');
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-list').classList.add('active');
+  renderList();
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modalBg')) {
+    document.getElementById('modalBg').classList.remove('open');
+  }
+}
+
+function deleteTV() {
+  if (!confirm('Supprimer cette TV ?')) return;
+  tvList = tvList.filter(t => t.id !== currentModalId);
+  save();
+  document.getElementById('modalBg').classList.remove('open');
+  renderList();
+  showToast('TV supprimée', 'var(--danger)');
+}
+
+// ══ PRINT QR ══
+function printQR() {
+  const tv = tvList.find(t => t.id === currentModalId);
+  if (!tv) return;
+
+  const qrCanvas = document.querySelector('#qrCode canvas');
+  if (!qrCanvas) { showToast('QR non généré', 'var(--danger)'); return; }
+  const qrDataUrl = qrCanvas.toDataURL();
+
+  const w = window.open('', '_blank');
+  w.document.write(`<!DOCTYPE html><html><head>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Syne:wght@800&family=JetBrains+Mono&display=swap');
+      body { margin:0; display:flex; justify-content:center; align-items:center; min-height:100vh; background:#fff; }
+      .label {
+        width: 62mm; padding: 8mm;
+        border: 2px solid #000;
+        font-family: 'JetBrains Mono', monospace;
+        text-align: center;
+        border-radius: 6px;
+      }
+      .brand { font-family:'Syne',sans-serif; font-weight:800; font-size:14px; letter-spacing:2px; text-transform:uppercase; }
+      .model { font-size:13px; font-weight:500; margin:2px 0 8px; }
+      .qr-wrap img { width:120px; height:120px; }
+      .id { font-size:11px; color:#444; margin-top:6px; letter-spacing:1px; }
+      .etat { font-size:10px; background:#000; color:#fff; padding:3px 10px; border-radius:10px; margin-top:6px; display:inline-block; }
+      @media print { body { margin:0; } }
+    </style>
+  </head><body>
+    <div class="label">
+      <div class="brand">${tv.brand}</div>
+      <div class="model">${tv.model}</div>
+      <div class="qr-wrap"><img src="${qrDataUrl}" /></div>
+      <div class="id">${tv.id}</div>
+      <div class="etat">${tv.etat}</div>
+    </div>
+    <script>window.onload=()=>{window.print();}<\/script>
+  </body></html>`);
+  w.document.close();
+}
+
+// ══ INIT ══
+updateCount();
+renderList();
+</script>
+</body>
+</html>
