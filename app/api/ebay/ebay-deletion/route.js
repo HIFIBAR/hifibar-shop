@@ -7,14 +7,21 @@ export async function GET(request) {
   const VERIFICATION_TOKEN = "hifibarSync2026EbayProductionToken";
   const ENDPOINT = "https://hifibar.eu/api/ebay/ebay-deletion";
 
-  const hash = createHash('sha256')
-    .update(challengeCode + VERIFICATION_TOKEN + ENDPOINT)
-    .digest('hex');
+  const hash = createHash('sha256');
+  hash.update(challengeCode);
+  hash.update(VERIFICATION_TOKEN);
+  hash.update(ENDPOINT);
+  const responseHash = hash.digest('hex');
 
-  return Response.json({ challengeResponse: hash });
+  return new Response(JSON.stringify({ challengeResponse: responseHash }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' }
+  });
 }
 
 export async function POST(request) {
-  console.log("eBay account deletion notification received");
-  return Response.json({ ok: true });
+  return new Response(JSON.stringify({ ok: true }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' }
+  });
 }
