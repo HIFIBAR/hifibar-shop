@@ -17,7 +17,7 @@ export async function GET(request) {
   }
 
   const VERIFICATION_TOKEN = "hifibarSync2026EbayProductionToken";
-  const ENDPOINT = "https://webhook.site/341a8ec6-a74b-4e80-a3b2-b926181f24ec";
+  const ENDPOINT = "https://hifibar.eu/api/ebay/ebay-deletion";
 
   const hash = createHash('sha256');
   hash.update(challengeCode);
