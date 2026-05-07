@@ -14,3 +14,14 @@ const nextConfig = {
   }
 };
 module.exports = nextConfig;
+
+async redirects() {
+  return [
+    {
+      source: '/:path*',
+      has: [{ type: 'host', value: 'www.hifibar.eu' }],
+      destination: 'https://hifibar.eu/:path*',
+      permanent: true,
+    },
+  ];
+}
