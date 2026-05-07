@@ -3,11 +3,17 @@ import { createHash } from 'crypto';
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const challengeCode = searchParams.get('challenge_code');
-  const fullUrl = request.url;
   
-  console.log("=== EBAY CHALLENGE ===");
-  console.log("Full URL reçue:", fullUrl);
-  console.log("Challenge code:", challengeCode);
+  console.log("GET reçu, challenge_code:", challengeCode);
+  console.log("URL complète:", request.url);
+
+  // Si pas de challenge_code, retourner 200 simple
+  if (!challengeCode) {
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
 
   const VERIFICATION_TOKEN = "hifibarSync2026EbayProductionToken";
   const ENDPOINT = "https://hifibar.eu/api/ebay/ebay-deletion";
@@ -18,7 +24,7 @@ export async function GET(request) {
   hash.update(ENDPOINT);
   const responseHash = hash.digest('hex');
 
-  console.log("Hash calculé:", responseHash);
+  console.log("challengeResponse:", responseHash);
 
   return new Response(JSON.stringify({ challengeResponse: responseHash }), {
     status: 200,
@@ -27,6 +33,7 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  console.log("POST reçu de eBay");
   return new Response(JSON.stringify({ ok: true }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' }
