@@ -5,7 +5,7 @@ export async function GET(request) {
   const challengeCode = searchParams.get('challenge_code');
   
   const VERIFICATION_TOKEN = "hifibarSync2026EbayProductionToken";
-  const ENDPOINT = "https://hifibar.eu/api/ebay/ebay-deletion";
+  const ENDPOINT = "https://hifibar.eu/api/ebay";
 
   const hash = createHash('sha256')
     .update(challengeCode + VERIFICATION_TOKEN + ENDPOINT)
