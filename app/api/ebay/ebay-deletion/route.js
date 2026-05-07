@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { createHash } from 'crypto';
 
 export async function GET(request) {
@@ -7,7 +9,6 @@ export async function GET(request) {
   console.log("GET reçu, challenge_code:", challengeCode);
   console.log("URL complète:", request.url);
 
-  // Si pas de challenge_code, retourner 200 simple
   if (!challengeCode) {
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
